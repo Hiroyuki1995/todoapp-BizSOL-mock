@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Users</title>
+</head>
+<body>
+    <h1>Users</h1>
+<form method="get" action="/oauth/login">
+
+    <input type="hidden" name="state" value="{{state}}"> <!-- stateを隠しフィールドとして追加 -->
+    <p>
+        <select name="sub">
+        {{#each users}}
+                <option value="{{sub}}">{{user_name}}</option>
+            {{/each}}
+        </select>
+    </p>
+    <p><input type="submit"></input>
+
+</form>
+</body>
+</html>

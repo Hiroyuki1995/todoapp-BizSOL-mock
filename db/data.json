@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "sub": "001001",
+      "contractor_id": "001001A",
+      "main_account": "001011234567",
+      "user_name": "正常(企業1ユーザー1)",
+      "email": "001001@example.com",
+      "access_token": "3f51966d-18a6-4a82-bec6-680c6f181141",
+      "code": "9b84c60c-a914-4506-b349-53e37af2bda9"
+    },
+    {
+      "sub": "001002",
+      "contractor_id": "001002A",
+      "main_account": "001011234567",
+      "user_name": "正常(企業1ユーザー2)",
+      "email": "001002@example.com",
+      "access_token": "74c6d8ea-66de-43c2-825e-2ec8ae3cdfe1",
+      "code": "4d1c98b2-0c6d-4a33-aabb-5826c69f61fc"
+    }
+  ]
+}

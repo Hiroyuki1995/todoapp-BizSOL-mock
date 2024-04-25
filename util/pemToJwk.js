@@ -17,7 +17,7 @@ const pemToJwk = async () => {
   });
 
   // JWK形式のキーを出力
-  console.log("JWK:", JSON.stringify(jwk.toJSON(true), null, 2));
+  // console.log("JWK:", JSON.stringify(jwk.toJSON(true), null, 2));
   return jwk;
 };
 

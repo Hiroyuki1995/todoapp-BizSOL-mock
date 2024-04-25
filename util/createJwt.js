@@ -16,15 +16,22 @@ const header = {
 };
 
 // JWTの生成
-const createJwt = (nonce) => {
+/**
+ *
+ * @param {*} obj
+ * @param {string} obj.sub ユーザ識別子
+ * @param {string} obj.nonce ノンス
+ * @returns
+ */
+const createJwt = (obj) => {
   const payload = {
     iss: "https://www.apigw.opencanvas.ne.jp",
-    sub: "9999AG0123456789A001",
+    sub: obj.sub,
     aud: "00000000", // バックエンドで定義しているクライアントIDと一緒にすべし
     exp: Math.floor(Date.now() / 1000) + 60 * 60, // トークンの有効期限を1時間後(60秒*60分)に設定
     iat: Math.floor(Date.now() / 1000),
     auth_time: Math.floor(Date.now() / 1000),
-    nonce: nonce,
+    nonce: obj.nonce,
   };
   const token = jwt.sign(payload, privateKey, {
     algorithm: "RS256",
