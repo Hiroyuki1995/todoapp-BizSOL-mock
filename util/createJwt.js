@@ -1,6 +1,12 @@
-const fs = require("fs");
-const path = require("path");
-const jwt = require("jsonwebtoken");
+import fs from "fs";
+import jwt from "jsonwebtoken";
+import path from "path";
+
+import { fileURLToPath } from "url";
+
+// ESモジュール内で __dirname 相当のパスを取得
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 秘密鍵の読み込み
 // 外部から読み込まれてもこのファイルからの相対パスでいけるように、path.resolveを追加
@@ -25,7 +31,7 @@ const header = {
  */
 const createJwt = (obj) => {
   const payload = {
-    iss: "https://www.apigw.opencanvas.ne.jp",
+    iss: "http://localhost:8082",
     sub: obj.sub,
     aud: "00000000", // バックエンドで定義しているクライアントIDと一緒にすべし
     exp: Math.floor(Date.now() / 1000) + 60 * 60, // トークンの有効期限を1時間後(60秒*60分)に設定
@@ -41,6 +47,6 @@ const createJwt = (obj) => {
   return token;
 };
 
-module.exports = createJwt;
+export default createJwt;
 
 createJwt("noncetest");

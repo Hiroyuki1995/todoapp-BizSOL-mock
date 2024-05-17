@@ -1,17 +1,15 @@
 // Express モジュールの読み込み
-const express = require("express");
-const createJwt = require("./util/createJwt.js");
-const pemToJwk = require("./util/pemToJwk.js");
-const cors = require("cors");
-const { engine } = require("express-handlebars");
-const fs = require("fs");
+import cors from "cors";
+import crypto from "crypto";
+import express from "express";
+import { engine } from "express-handlebars";
+import fs from "fs";
+import { aud, clientPassword, redirectUri } from "./const.js";
+import createJwt from "./util/createJwt.js";
+import pemToJwk from "./util/pemToJwk.js";
 const app = express();
-const crypto = require("crypto");
-const { stringify } = require("remark");
 const dbPath = "db/data.json";
 const memoryStore = {}; // nonceを一時的に持ってくためのメモリ
-const aud = "00000000";
-const clientPassword = "abcdef";
 
 // CORSを全てのルートで許可する
 app.use(cors());
@@ -27,6 +25,7 @@ function loadData() {
   return JSON.parse(fs.readFileSync(dbPath, "utf8"));
 }
 
+// Basic認証フィルター（トークンエンドポイント用）
 function basicAuthentication(req, res, next) {
   // Authorization ヘッダーを取得
   const authHeader = req.headers["authorization"];
@@ -57,6 +56,7 @@ function basicAuthentication(req, res, next) {
   }
 }
 
+// Bearer認証フィルター（ユーザー情報照会エンドポイント用）
 function bearerAuthentication(req, res, next) {
   // Authorization ヘッダーを取得
   const authHeader = req.headers["authorization"];
@@ -79,7 +79,7 @@ function bearerAuthentication(req, res, next) {
   const userInfo = data.users.find(
     (user) => user.access_token === bearerToken && user.sub === req.query.sub
   );
-  if (typeof user !== "undefined") {
+  if (typeof userInfo !== "undefined") {
     // トークンに紐づくユーザーが存在する場合は次へ
     req.userInfo = userInfo;
     next();
@@ -91,18 +91,62 @@ function bearerAuthentication(req, res, next) {
   }
 }
 
-// ログイン画面
+// 認可エンドポイント（ID連携サービス認証）
 app.get("/oauth/auth", (req, res) => {
   console.log(`query: ${JSON.stringify(req.query)}`);
   const state = req.query.state;
   memoryStore["nonce"] = req.query.nonce; // トークンエンドポイントで返却できるようにメモリに保持しておく
+  res.redirect(
+    `http://localhost:8082/oidc/login?state=${encodeURIComponent(state)}`
+  );
+});
+
+// 通常のログイン画面（但し認証後、クライアントへリダイレクトする）
+app.get("/login", (req, res) => {
+  console.log(`query: ${JSON.stringify(req.query)}`);
+  const data = loadData();
+  res.render("login", { users: data.users });
+});
+
+// 通常のログイン画面での認証処理
+app.get("/authentication", (req, res) => {
+  const sub = req.query.sub; // ログイン画面で指定したユーザー
+  const iss = req.query.iss; // BizSOLモックのドメイン（URLエンコード済）
+  const code = crypto.randomUUID();
+  const data = loadData();
+
+  // users配列を走査し、指定されたsubを持つユーザーにcodeを追加
+  data.users.forEach((user) => {
+    if (user.sub === sub) {
+      user.code = code;
+    }
+  });
+
+  // 変更したデータをJSONファイルに書き戻す
+  fs.writeFile(dbPath, JSON.stringify(data, null, 2), (err) => {
+    if (err) {
+      console.error("認可コードの書き込み中にエラーが発生しました:", err);
+    } else {
+      console.log("認可コードの書き込みが正常に更新されました。");
+    }
+  });
+  res.redirect(`${redirectUri}?code=${code}&iss=${iss}`); // stateは返却しない
+});
+
+// ID連携用ログイン画面
+app.get("/oidc/login", (req, res) => {
+  console.log(`query: ${JSON.stringify(req.query)}`);
+  const state = req.query.state;
   const data = loadData();
   res.render("users", { users: data.users, state: state });
 });
 
-// 認可エンドポイント
-app.get("/oauth/login", (req, res) => {
+// ID連携用ログイン画面での認証処理
+app.get("/oauth/authentication", (req, res) => {
+  console.log("/oauth/authentication");
+
   const state = req.query.state;
+  console.log(`state:${state}`);
   const sub = req.query.sub;
   const code = crypto.randomUUID();
   const data = loadData();
@@ -117,9 +161,9 @@ app.get("/oauth/login", (req, res) => {
   // 変更したデータをJSONファイルに書き戻す
   fs.writeFile(dbPath, JSON.stringify(data, null, 2), (err) => {
     if (err) {
-      console.error("ファイル書き込み中にエラーが発生しました:", err);
+      console.error("認可コードの書き込み中にエラーが発生しました:", err);
     } else {
-      console.log("ファイルが正常に更新されました。");
+      console.log("認可コードの書き込みが正常に更新されました。");
     }
   });
 
@@ -130,10 +174,8 @@ app.get("/oauth/login", (req, res) => {
   );
 });
 
-// トークンエンドポイント
+// トークンエンドポイント（アクセストークン取得）
 app.post("/oauth/token", basicAuthentication, (req, res) => {
-  // app.post("/oauth/token", (req, res) => {
-  console.log(`req.body: ${JSON.stringify(req.body)}`);
   // codeに紐づくIDトークンの作成&返却
   const code = req.body.code;
   const data = loadData();
@@ -150,9 +192,9 @@ app.post("/oauth/token", basicAuthentication, (req, res) => {
   // 変更したデータをJSONファイルに書き戻す
   fs.writeFile(dbPath, JSON.stringify(data, null, 2), (err) => {
     if (err) {
-      console.error("ファイル書き込み中にエラーが発生しました:", err);
+      console.error("アクセストークンの書き込み中にエラーが発生しました:", err);
     } else {
-      console.log("ファイルが正常に更新されました。");
+      console.log("アクセストークンの書き込みが正常に更新されました。");
     }
   });
   res.json({
@@ -165,7 +207,7 @@ app.post("/oauth/token", basicAuthentication, (req, res) => {
   });
 });
 
-// ユーザ情報エンドポイント
+// ユーザ情報エンドポイント（ID連携情報照会）
 app.get("/userinfo", bearerAuthentication, (req, res) => {
   // アクセストークンに紐づくユーザーデータの返却
   const userInfo = req.userInfo;

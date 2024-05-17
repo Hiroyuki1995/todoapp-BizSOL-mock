@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Users</title>
+    <script>
+    // ページが読み込まれた時に実行される関数
+    window.onload = function() {
+    // エンコードするURL
+    var url = "http://localhost:8082";
+
+    // encodeURIComponentを使用してURLをエンコード
+    var encodedUrl = encodeURIComponent(url);
+
+    // エンコードされたURLをinput要素のvalueにセット
+    document.getElementById("encodedUrl").value = encodedUrl;
+    };
+    </script>
+</head>
+<body>
+    <h1>ログイン画面</h1>
+<form method="get" action="/authentication">
+
+    <input type="hidden" name="iss" id="encodedUrl" value=""> <!-- issを隠しフィールドとして追加 -->
+    <p>
+        <select name="sub">
+        {{#each users}}
+                <option value="{{sub}}">{{user_name}}</option>
+            {{/each}}
+        </select>
+    </p>
+    <p><input type="submit"></input>
+
+</form>
+</body>
+</html>
